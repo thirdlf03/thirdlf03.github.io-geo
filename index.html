@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音日記</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet.js for map view -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts for a modern Japanese font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- ** NEW ** : Claymorphism Design System --- */
+        body {
+            font-family: 'M PLUS Rounded 1c', 'Inter', 'Helvetica Neue', 'Arial', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            /* ** MODIFIED ** : Simple, soft background color */
+            background-color: #f0f2f5;
+            transition: background-color 0.3s ease;
+        }
+
+        .dark body {
+            background-color: #1a1a1a;
+        }
+
+        /* ** NEW ** : Claymorphism card style */
+        .clay-card {
+            border-radius: 2rem; /* 32px */
+            background: #f0f2f5;
+            box-shadow: 8px 8px 16px #d9dbde, -8px -8px 16px #ffffff;
+            transition: all 0.3s ease;
+        }
+        .dark .clay-card {
+            background: #1a1a1a;
+            box-shadow: 8px 8px 16px #141414, -8px -8px 16px #202020;
+        }
+        
+        /* ** NEW ** : Inset shadow for a "pressed" look */
+        .clay-inset {
+             border-radius: 1.5rem; /* 24px */
+             background: #f0f2f5;
+             box-shadow: inset 6px 6px 12px #d9dbde, inset -6px -6px 12px #ffffff;
+        }
+        .dark .clay-inset {
+            background: #1a1a1a;
+            box-shadow: inset 6px 6px 12px #141414, inset -6px -6px 12px #202020;
+        }
+
+        /* ** MODIFIED ** : Tab buttons with clay effect */
+        .tab-button {
+            flex: 1;
+            padding: 0.75rem 0;
+            border-radius: 1.5rem;
+            font-weight: 700;
+            color: #52525b; /* zinc-600 */
+            transition: all 0.3s ease;
+        }
+        .dark .tab-button {
+            color: #a1a1aa; /* zinc-400 */
+        }
+        .tab-button.tab-active {
+            color: #1d4ed8; /* blue-700 */
+            background: #f0f2f5;
+            box-shadow: 4px 4px 8px #d9dbde, -4px -4px 8px #ffffff;
+        }
+        .dark .tab-button.tab-active {
+            color: #60a5fa; /* blue-400 */
+            background: #1a1a1a;
+            box-shadow: 4px 4px 8px #141414, -4px -4px 8px #202020;
+        }
+
+        /* ** MODIFIED ** : Main record button with clay effect */
+        #record-button {
+            border-radius: 50%;
+            background: #f0f2f5;
+            box-shadow: 8px 8px 16px #d9dbde, -8px -8px 16px #ffffff;
+            color: #1d4ed8;
+        }
+        #record-button:active {
+            box-shadow: inset 6px 6px 12px #d9dbde, inset -6px -6px 12px #ffffff;
+        }
+        .dark #record-button {
+            background: #1a1a1a;
+            box-shadow: 8px 8px 16px #141414, -8px -8px 16px #202020;
+            color: #60a5fa;
+        }
+        .dark #record-button:active {
+            box-shadow: inset 6px 6px 12px #141414, inset -6px -6px 12px #202020;
+        }
+
+        #record-button.recording {
+            color: #dc2626; /* red-600 */
+            animation: pulse 1.5s infinite;
+        }
+        .dark #record-button.recording {
+             color: #f87171; /* red-400 */
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
+        }
+        
+        .gemini-button {
+            background: #1d4ed8;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 4px 4px 8px #d9dbde, -4px -4px 8px #ffffff;
+        }
+        .dark .gemini-button {
+            background: #2563eb;
+            box-shadow: 4px 4px 8px #141414, -4px -4px 8px #202020;
+        }
+        .gemini-button:active {
+             box-shadow: inset 2px 2px 4px #1e40af, inset -2px -2px 4px #2563eb;
+        }
+        .gemini-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #map { height: 300px; border-radius: 1.5rem; }
+    </style>
+</head>
+<body class="dark:bg-stone-900 text-zinc-800 dark:text-zinc-200">
+
+    <div class="container mx-auto max-w-2xl p-4 min-h-screen">
+        <header class="text-center py-8">
+            <h1 class="text-4xl font-bold flex items-center justify-center gap-3 tracking-tight">
+                <i data-lucide="radio-receiver"></i> 音日記
+            </h1>
+            <p class="text-zinc-500 dark:text-zinc-400 mt-2 font-medium">あなたの日常を、音とデータで記録しよう</p>
+        </header>
+
+        <div class="mb-8 p-2 clay-inset">
+            <div class="flex">
+                <button id="tab-record" class="tab-button tab-active">録音</button>
+                <button id="tab-log" class="tab-button">日記</button>
+            </div>
+        </div>
+
+        <main>
+            <div id="view-record">
+                <div class="flex flex-col items-center justify-center p-8">
+                    <button id="record-button" class="w-40 h-40 flex items-center justify-center transition-all duration-200 focus:outline-none transform active:scale-95">
+                        <i id="record-icon" data-lucide="mic" class="w-20 h-20"></i>
+                    </button>
+                    <p id="status-text" class="mt-8 text-lg font-medium text-zinc-700 dark:text-zinc-300">タップして録音開始</p>
+                    <p id="timer-text" class="mt-2 text-3xl font-mono tracking-widest">00:00</p>
+                    <div id="permission-message" class="mt-6 text-center text-sm text-yellow-800 dark:text-yellow-400 bg-yellow-400/20 p-4 rounded-2xl hidden">
+                        <p class="font-bold flex items-center justify-center gap-1.5"><i data-lucide="alert-triangle" class="w-4 h-4"></i>マイクにアクセスできません</p>
+                        <p class="mt-1">この環境では、セキュリティ上の理由でマイクが利用できない可能性があります。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-log" class="hidden">
+                <div class="clay-card p-2 mb-6">
+                    <div id="map" class="z-0"></div>
+                </div>
+                <div id="timeline" class="space-y-6">
+                    <div id="empty-log-message" class="text-center py-12 clay-card">
+                        <i data-lucide="book-open" class="mx-auto h-12 w-12 text-zinc-400 dark:text-zinc-500"></i>
+                        <h3 class="mt-4 text-base font-medium">まだ日記がありません</h3>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">最初の音を録音してみましょう。</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            App.init();
+        });
+
+        const App = (() => {
+            let isRecording = false;
+            let mediaRecorder;
+            let audioChunks = [];
+            let timerInterval;
+            let secondsElapsed = 0;
+            let db;
+            let map;
+
+            const elements = {
+                recordButton: document.getElementById('record-button'),
+                // ** FIXED ** : Removed direct reference to the icon to prevent stale element issues.
+                statusText: document.getElementById('status-text'),
+                timerText: document.getElementById('timer-text'),
+                permissionMessage: document.getElementById('permission-message'),
+                tabRecord: document.getElementById('tab-record'),
+                tabLog: document.getElementById('tab-log'),
+                viewRecord: document.getElementById('view-record'),
+                viewLog: document.getElementById('view-log'),
+                timeline: document.getElementById('timeline'),
+                emptyLogMessage: document.getElementById('empty-log-message'),
+                mapContainer: document.getElementById('map'),
+            };
+
+            const init = () => {
+                setupEventListeners();
+                initDB().then(loadLogs).catch(err => console.error(err));
+                initMap();
+                checkPermissions();
+            };
+
+            const checkPermissions = () => {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    elements.recordButton.disabled = true;
+                    elements.recordButton.classList.add('opacity-50', 'cursor-not-allowed');
+                    elements.permissionMessage.classList.remove('hidden');
+                    elements.statusText.textContent = 'マイク機能がありません';
+                }
+            };
+            
+            const initDB = () => new Promise((resolve, reject) => {
+                const request = indexedDB.open('SoundDiaryDB_v5', 1); 
+                request.onerror = e => reject('Database error: ' + e.target.errorCode);
+                request.onsuccess = e => { db = e.target.result; resolve(); };
+                request.onupgradeneeded = e => {
+                    const store = e.target.result.createObjectStore('logs', { keyPath: 'id', autoIncrement: true });
+                };
+            });
+
+            const saveLog = log => db.transaction(['logs'], 'readwrite').objectStore('logs').add(log);
+            const getLog = (id) => new Promise(resolve => {
+                db.transaction(['logs'], 'readonly').objectStore('logs').get(id).onsuccess = e => resolve(e.target.result);
+            });
+            const updateLog = (log) => new Promise(resolve => {
+                db.transaction(['logs'], 'readwrite').objectStore('logs').put(log).onsuccess = e => resolve(e.target.result);
+            });
+            const getAllLogs = () => new Promise(resolve => {
+                const request = db.transaction(['logs'], 'readonly').objectStore('logs').getAll();
+                request.onsuccess = () => resolve(request.result.reverse());
+            });
+
+            const initMap = () => {
+                map = L.map(elements.mapContainer).setView([35.6895, 139.6917], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+            };
+            
+            const addMarkerToMap = (lat, lng, timestamp) => {
+                const date = new Date(timestamp).toLocaleString('ja-JP');
+                L.marker([lat, lng]).addTo(map).bindPopup(`<b>録音日時:</b><br>${date}`);
+            };
+
+            const setupEventListeners = () => {
+                elements.recordButton.addEventListener('click', toggleRecording);
+                elements.tabRecord.addEventListener('click', () => switchView('record'));
+                elements.tabLog.addEventListener('click', () => switchView('log'));
+            };
+
+            const switchView = view => {
+                const isRecordView = view === 'record';
+                elements.viewRecord.classList.toggle('hidden', !isRecordView);
+                elements.viewLog.classList.toggle('hidden', isRecordView);
+                elements.tabRecord.classList.toggle('tab-active', isRecordView);
+                elements.tabLog.classList.toggle('tab-active', !isRecordView);
+                if (!isRecordView) {
+                    setTimeout(() => map.invalidateSize(), 10);
+                }
+            };
+
+            const loadLogs = async () => {
+                const logs = await getAllLogs();
+                elements.timeline.innerHTML = ''; 
+
+                if (map) {
+                    map.eachLayer((layer) => {
+                        if (layer instanceof L.Marker) {
+                            map.removeLayer(layer);
+                        }
+                    });
+                }
+
+                if (logs.length > 0) {
+                    logs.forEach(log => {
+                        createLogElement(log);
+                        if (log.location) addMarkerToMap(log.location.latitude, log.location.longitude, log.timestamp);
+                    });
+                    elements.emptyLogMessage.remove();
+                } else {
+                    elements.timeline.appendChild(elements.emptyLogMessage);
+                }
+            };
+
+            const createLogElement = (log) => {
+                const div = document.createElement('div');
+                div.className = 'p-4 clay-card';
+                const audioURL = URL.createObjectURL(log.audioBlob);
+                const date = new Date(log.timestamp).toLocaleString('ja-JP', { dateStyle: 'long', timeStyle: 'short' });
+                
+                const titleHtml = `<h3 id="title-${log.id}" class="text-lg font-bold mb-2">${log.title || ''}</h3>`;
+                const geminiButtonHtml = log.title ? '' : `<button id="gemini-btn-${log.id}" class="gemini-button">✨ この瞬間をタイトルに</button>`;
+
+                let sensorHtml = `
+                    <div class="flex items-center text-zinc-500 dark:text-zinc-400 mt-3 text-xs gap-4 flex-wrap">
+                        ${log.location ? `<span class="flex items-center gap-1.5"><i data-lucide="map-pin" class="w-3 h-3"></i>場所あり</span>` : ''}
+                        ${log.light ? `<span class="flex items-center gap-1.5"><i data-lucide="sun" class="w-3 h-3"></i>${log.light.illuminance.toFixed(0)} lx</span>` : ''}
+                        ${log.motion ? `<span class="flex items-center gap-1.5"><i data-lucide="move" class="w-3 h-3"></i>${log.motion.moving ? '移動中' : '静止'}</span>` : ''}
+                    </div>`;
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="text-sm font-medium text-zinc-600 dark:text-zinc-400">${date}</p>
+                        ${geminiButtonHtml}
+                    </div>
+                    ${titleHtml}
+                    <audio controls src="${audioURL}" class="w-full mt-3 h-10"></audio>
+                    ${sensorHtml}`;
+                elements.timeline.appendChild(div);
+                
+                if (!log.title) {
+                    const geminiBtn = document.getElementById(`gemini-btn-${log.id}`);
+                    geminiBtn.addEventListener('click', () => generateTitle(log.id));
+                }
+                
+                lucide.createIcons();
+            };
+            
+            const generateTitle = async (logId) => {
+                const button = document.getElementById(`gemini-btn-${logId}`);
+                const titleElement = document.getElementById(`title-${logId}`);
+                
+                button.disabled = true;
+                button.innerHTML = `<i data-lucide="loader-2" class="animate-spin w-4 h-4"></i> 生成中...`;
+                lucide.createIcons();
+
+                try {
+                    const log = await getLog(logId);
+                    if (!log) throw new Error('Log not found');
+
+                    const date = new Date(log.timestamp).toLocaleString('ja-JP', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    const lightDesc = log.light ? `${log.light.illuminance.toFixed(0)}ルクス (おそらく${log.light.illuminance > 500 ? '屋外の日中' : log.light.illuminance > 50 ? '明るい屋内' : '薄暗い場所'})` : '不明';
+                    const motionDesc = log.motion ? (log.motion.moving ? '移動中' : '静止中') : '不明';
+                    const locationDesc = log.location ? `緯度${log.location.latitude.toFixed(2)}, 経度${log.location.longitude.toFixed(2)}の地点` : '場所不明';
+
+                    const prompt = `以下の状況データに基づき、この瞬間にふさわしい詩的な日記のタイトルを1つだけ、日本語で提案してください。タイトルは15文字以内で、感情が豊かに表現されるようにしてください。例：「夕暮れ時の散歩道」「静かなカフェの片隅で」\n\n- 日時: ${date}\n- 場所: ${locationDesc}\n- 明るさ: ${lightDesc}\n- 動き: ${motionDesc}\n\nタイトル：`;
+
+                    const generatedTitle = await callGeminiAPI(prompt);
+                    
+                    log.title = generatedTitle.replace(/「|」/g, ''); // Remove quotes
+                    await updateLog(log);
+
+                    titleElement.textContent = log.title;
+                    button.style.display = 'none';
+
+                } catch (error) {
+                    console.error('Error generating title:', error);
+                    titleElement.textContent = 'タイトルの生成に失敗しました。';
+                    button.disabled = false;
+                    button.innerHTML = `✨ 再試行`;
+                    lucide.createIcons();
+                }
+            };
+            
+            const callGeminiAPI = async (prompt, retries = 3, delay = 1000) => {
+                const apiKey = ""; // API key is handled by the environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                };
+
+                for (let i = 0; i < retries; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`API request failed with status ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        if (result.candidates && result.candidates.length > 0 &&
+                            result.candidates[0].content && result.candidates[0].content.parts &&
+                            result.candidates[0].content.parts.length > 0) {
+                            return result.candidates[0].content.parts[0].text;
+                        } else {
+                            throw new Error('Invalid API response structure');
+                        }
+                    } catch (error) {
+                        if (i === retries - 1) throw error;
+                        await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                    }
+                }
+            };
+
+
+            const toggleRecording = async () => {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    try {
+                        elements.permissionMessage.classList.add('hidden');
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        startRecording(stream);
+                    } catch (err) {
+                        console.error("Error accessing microphone:", err);
+                        elements.permissionMessage.classList.remove('hidden');
+                        elements.statusText.textContent = '録音を開始できません';
+                    }
+                }
+            };
+
+            const startRecording = stream => {
+                isRecording = true;
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = saveRecording;
+                mediaRecorder.start();
+                updateUIRecording(true);
+                startTimer();
+            };
+
+            const stopRecording = () => {
+                if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                    mediaRecorder.stop();
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+                isRecording = false;
+                updateUIRecording(false);
+                stopTimer();
+            };
+
+            const saveRecording = async () => {
+                elements.statusText.textContent = '保存中...';
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const [location, light, motion] = await Promise.all([
+                    getSensorData.location(),
+                    getSensorData.light(),
+                    getSensorData.motion()
+                ]);
+                saveLog({ timestamp: Date.now(), audioBlob, location, light, motion, title: '' });
+                setTimeout(() => { resetUI(); loadLogs(); }, 500);
+            };
+
+            // ** FIXED ** : This function now manipulates the button's innerHTML directly.
+            const updateUIRecording = (isRec) => {
+                elements.recordButton.classList.toggle('recording', isRec);
+                // By replacing the innerHTML, we create a new icon element each time,
+                // which lucide can then correctly process.
+                elements.recordButton.innerHTML = isRec 
+                    ? '<i data-lucide="square" class="w-16 h-16"></i>'
+                    : '<i data-lucide="mic" class="w-20 h-20"></i>';
+                elements.statusText.textContent = isRec ? '録音中...' : 'タップして録音開始';
+                lucide.createIcons();
+            };
+
+            const resetUI = () => {
+                elements.statusText.textContent = 'タップして録音開始';
+                elements.timerText.textContent = '00:00';
+            };
+
+            const startTimer = () => {
+                secondsElapsed = 0;
+                timerInterval = setInterval(() => {
+                    secondsElapsed++;
+                    const minutes = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+                    const seconds = String(secondsElapsed % 60).padStart(2, '0');
+                    elements.timerText.textContent = `${minutes}:${seconds}`;
+                }, 1000);
+            };
+
+            const stopTimer = () => clearInterval(timerInterval);
+
+            const getSensorData = {
+                location: () => new Promise(resolve => {
+                    if (!('geolocation' in navigator)) return resolve(null);
+                    navigator.geolocation.getCurrentPosition(
+                        pos => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+                        () => resolve(null),
+                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    );
+                }),
+                light: () => new Promise(resolve => {
+                    if (!('AmbientLightSensor' in window)) return resolve(null);
+                    try {
+                        const sensor = new AmbientLightSensor({ frequency: 1 });
+                        const timeout = setTimeout(() => { sensor.stop(); resolve(null); }, 2000);
+                        sensor.onreading = () => { clearTimeout(timeout); sensor.stop(); resolve({ illuminance: sensor.illuminance }); };
+                        sensor.onerror = () => { clearTimeout(timeout); resolve(null); };
+                        sensor.start();
+                    } catch (e) { resolve(null); }
+                }),
+                motion: () => new Promise(resolve => {
+                    if (!('DeviceMotionEvent' in window)) return resolve(null);
+                    const handler = e => {
+                        window.removeEventListener('devicemotion', handler);
+                        const { x, y, z } = e.acceleration;
+                        if (x === null) return resolve(null);
+                        resolve({ moving: Math.sqrt(x*x + y*y + z*z) > 1.5 });
+                    };
+                    setTimeout(() => { window.removeEventListener('devicemotion', handler); resolve(null); }, 500);
+                    window.addEventListener('devicemotion', handler);
+                }),
+            };
+
+            return { init };
+        })();
+    </script>
+</body>
+</html>
+
